@@ -1,0 +1,34 @@
+# 备选：静态页面 + 只监听回环地址的 Node 公开接口适配服务。
+# 必须按自己的证书位置、站点目录修改；若使用宝塔等面板，沿用已有 HTTPS 配置。
+server {
+    listen 443 ssl;
+    server_name cc.zhouwanx.top;
+    root /var/www/lanchao/dist;
+    index index.html;
+
+    ssl_certificate /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
+
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://ai.zhouwanx.top; font-src 'self'; connect-src 'self'; frame-src 'none'; frame-ancestors 'self' https://ai.zhouwanx.top; object-src 'none'; base-uri 'self'; form-action 'none'; upgrade-insecure-requests" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Permissions-Policy "camera=(), microphone=(), geolocation=()" always;
+
+    # 不要添加 X-Frame-Options DENY/SAMEORIGIN，否则父站无法跨域嵌入。
+    location = /api/site {
+        proxy_pass http://127.0.0.1:8787;
+        proxy_set_header Authorization "";
+        proxy_set_header Cookie "";
+        proxy_set_header Host 127.0.0.1;
+        proxy_read_timeout 15s;
+    }
+
+    location /assets/ {
+        try_files $uri =404;
+        # 如需设置缓存，注意 Nginx 的 add_header 继承规则，避免覆盖上面的安全头。
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}
