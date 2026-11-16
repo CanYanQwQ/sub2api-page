@@ -36,3 +36,19 @@ export const PROVIDERS: Record<string, { name: string; label: string; descriptio
   deepseek: { name: 'DeepSeek', label: 'DeepSeek', description: '中文创作、推理与开发的另一种选择。', symbol: 'deepseek' },
   grok: { name: 'xAI', label: 'Grok', description: '用统一接口，探索不同模型的能力。', symbol: 'grok' },
 }
+
+export interface ServiceSupplier {
+  id: string
+  name: string
+  description: string
+  mark: 'layers' | 'cloud' | 'network'
+  logo?: string
+  url?: string
+}
+
+// 用户指定的服务供应商；未提供品牌Logo时沿用矢量标识。
+// 在此修改名称/介绍；logo建议使用public中的本地图片路径。
+// 没有URL时只作展示，不生成虚假链接；填写完整HTTPS URL后才显示访问入口。
+export const SERVICE_SUPPLIERS: ServiceSupplier[] = [
+  { id: 'sudoapi', name: 'SUDOAPI', description: '模型接口服务', mark: 'layers', url: 'https://sudoapi.net' },
+]

@@ -12,6 +12,7 @@ import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import Modal from './components/Modal.vue'
 import ProviderMark from './components/ProviderMark.vue'
+import SupplierShowcase from './components/SupplierShowcase.vue'
 import { PROVIDERS } from './config'
 import { useSite } from './useSite'
 import { createSnippet, tokenizeCode, type CodeLanguage } from './snippets'
@@ -46,6 +47,12 @@ const themeOptions = [
   { value: 'dark' as const, label: '深色模式', icon: Moon },
   { value: 'system' as const, label: '跟随系统', icon: Monitor },
 ]
+const currentThemeOption = computed(() => themeOptions.find(option => option.value === theme.value)!)
+
+function cycleMobileTheme() {
+  const index = themeOptions.findIndex(option => option.value === theme.value)
+  theme.value = themeOptions[(index + 1) % themeOptions.length]!.value
+}
 
 function stored(key: string) { try { return localStorage.getItem(key) } catch { return null } }
 function persist(key: string, value: string) { try { localStorage.setItem(key, value) } catch { /* 存储被禁用不影响使用 */ } }
@@ -278,6 +285,7 @@ onUnmounted(() => {
         <div class="theme-switch" role="group" aria-label="颜色模式">
           <button v-for="option in themeOptions" :key="option.value" type="button" :aria-label="option.label" :title="option.label" :aria-pressed="theme === option.value" :class="{ selected: theme === option.value }" @click="theme = option.value"><component :is="option.icon" :size="15" /></button>
         </div>
+        <button type="button" class="mobile-theme-toggle icon-button" :aria-label="`颜色模式：${currentThemeOption.label}，点击切换`" :title="`${currentThemeOption.label}，点击切换`" @click="cycleMobileTheme"><component :is="currentThemeOption.icon" :size="19" /></button>
         <a class="header-guide" :href="settings.docUrl || '#quickstart'" :target="settings.docUrl ? '_top' : undefined" rel="noreferrer" @click="!settings.docUrl && goLocal('#quickstart')"><BookOpen :size="16" />接入文档</a>
         <a :href="official('login')" target="_top" rel="noreferrer" class="header-login"><LogIn :size="16" /><span>登录</span></a>
         <a v-if="enabled('registration_enabled')" :href="official('register')" target="_top" rel="noreferrer" class="button button-small button-dark">注册账户<ArrowUpRight :size="14" /></a>
@@ -305,7 +313,7 @@ onUnmounted(() => {
       <section id="overview" class="hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <h1 id="hero-title">让每一个想法，<br /><span>接入 AI 的可能。</span></h1>
-          <p class="hero-description">一个入口，连接多种 AI 模型。<br class="desktop-break" />用你熟悉的 API 和 SDK，把复杂留给网关，<br class="desktop-break" />把时间留给真正重要的创造。</p>
+          <p class="hero-description">一个入口，连接多种 AI 模型。<br class="desktop-break" />用你熟悉的 API 和 SDK，<span class="keep-together">把复杂留给网关，</span><br class="desktop-break" /><span class="keep-together">把时间留给真正重要的创造。</span></p>
           <div class="hero-actions">
             <a class="button button-primary" :href="official(backendOnly ? 'login' : 'keys')" target="_top" rel="noreferrer"><Terminal :size="18" />获取 API 密钥<ArrowUpRight :size="17" /></a>
             <a v-if="canModels" class="button button-secondary" :href="official('models')" target="_top" rel="noreferrer">浏览模型广场<ArrowUpRight :size="16" /></a>
@@ -329,6 +337,8 @@ onUnmounted(() => {
           <div class="endpoint-strip"><span class="endpoint-icon"><Globe2 :size="17" /></span><div><code>{{ apiEndpoint }}</code></div><button type="button" class="icon-button" aria-label="复制 API 端点" @click="copy(apiEndpoint, 'API 端点')"><Copy :size="16" /></button></div>
         </div>
       </section>
+
+      <SupplierShowcase />
 
       <section v-if="canModels" class="model-rail" aria-label="公开模型目录摘要" :aria-busy="loading">
         <div class="model-rail-label"><span>让好模型，为你所用</span></div>

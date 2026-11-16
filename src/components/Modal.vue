@@ -5,8 +5,18 @@ import { X } from '@lucide/vue'
 const props = defineProps<{ open: boolean; title: string; id: string }>()
 const emit = defineEmits<{ close: [] }>()
 const panel = ref<HTMLElement>()
+const viewportHeight = ref(0)
 let previousFocus: HTMLElement | null = null
 let previousOverflow = ''
+
+function updateViewportHeight() {
+  viewportHeight.value = window.visualViewport?.height ?? window.innerHeight
+}
+
+function stopViewportTracking() {
+  window.visualViewport?.removeEventListener('resize', updateViewportHeight)
+  window.removeEventListener('resize', updateViewportHeight)
+}
 
 function onKey(event: KeyboardEvent) {
   if (!props.open) return
@@ -35,18 +45,23 @@ watch(() => props.open, async (value) => {
     previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     document.addEventListener('keydown', onKey)
+    updateViewportHeight()
+    window.visualViewport?.addEventListener('resize', updateViewportHeight)
+    window.addEventListener('resize', updateViewportHeight)
     await nextTick()
     const initial = panel.value?.querySelector<HTMLElement>('input, textarea') || panel.value?.querySelector<HTMLElement>('button')
     initial?.focus()
   } else {
     document.body.style.overflow = previousOverflow
     document.removeEventListener('keydown', onKey)
+    stopViewportTracking()
     previousFocus?.focus()
   }
 })
 
 onUnmounted(() => {
   document.removeEventListener('keydown', onKey)
+  stopViewportTracking()
   if (props.open) document.body.style.overflow = previousOverflow
 })
 </script>
@@ -54,7 +69,7 @@ onUnmounted(() => {
 <template>
   <Teleport to="body">
     <Transition name="modal">
-      <div v-if="open" class="modal-backdrop" @click.self="emit('close')">
+      <div v-if="open" class="modal-backdrop" :style="{ '--modal-viewport-height': `${viewportHeight}px` }" @click.self="emit('close')">
         <section :id="id" ref="panel" class="modal-panel" role="dialog" aria-modal="true" :aria-labelledby="`${id}-title`">
           <header class="modal-header">
             <h2 :id="`${id}-title`">{{ title }}</h2>

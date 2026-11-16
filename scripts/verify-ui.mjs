@@ -84,6 +84,7 @@ async function sidebarMotion() {
 const result = await (await fetch(`${base}/api/site`)).json()
 try {
   await fresh()
+  check('首屏下方只展示SUDOAPI，供应商链接正确且安全打开新标签', await page.getByRole('heading', { name: '服务供应商', exact: true }).isVisible() && await page.locator('.supplier-item').count() === 1 && await page.locator('.supplier-copy strong').textContent() === 'SUDOAPI' && await page.locator('.supplier-showcase a').evaluate(element => element.href === 'https://sudoapi.net/' && element.target === '_blank' && element.rel.includes('noopener') && element.rel.includes('noreferrer')) && await page.locator('.supplier-showcase').evaluate(element => element.previousElementSibling?.id === 'overview'))
   check('页面显示真实站名与模型目录，不再展示技术署名及版本小字', (await page.title()).includes('岚潮API') && await page.locator('.rail-provider').count() > 0 && await page.locator('.sidebar-footnote, .version, .section-kicker, .feature-number, .hero-eyebrow, .code-window-label').count() === 0 && !/由 Sub2API 提供支持|Powered by Sub2API|v0\.2\.21/.test(await page.locator('body').innerText()))
   check('全部官方入口均为 HTTPS 绝对地址并顶层跳转', await page.locator('a[href^="https://ai.zhouwanx.top"]').evaluateAll(items => items.length > 10 && items.every(item => item.target === '_top')))
   const collapse = await sidebarMotion()
@@ -178,6 +179,44 @@ try {
   check('公告不伪造未读或登录状态', (await page.locator('.announcement-content').textContent()).includes('如果尚未登录') && await page.locator('.announcement-content a[target="_top"]').count() === 1)
   await page.keyboard.press('Escape')
 
+  for (const width of [320, 390, 600]) {
+    await page.setViewportSize({ width, height: 844 })
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }))
+    check(`${width}px手机顶栏主操作触摸范围足够且互不重叠`, await page.locator('.topbar').evaluate(element => {
+      const selectors = ['.nav-toggle', '.search-trigger', '.mobile-theme-toggle', '.header-login']
+      const rects = selectors.map(selector => element.querySelector(selector).getBoundingClientRect())
+      return rects.every(rect => rect.width >= 44 && rect.height >= 44 && rect.left >= 0 && rect.right <= innerWidth) && rects.slice(1).every((rect, index) => rect.left >= rects[index].right)
+    }))
+    check(`${width}px供应商单列排列，文字不撑出容器`, await page.locator('.supplier-list').evaluate(element => {
+      const items = [...element.children].map(item => item.getBoundingClientRect())
+      return items.length === 1 && [...element.querySelectorAll('.supplier-copy')].every(item => item.scrollWidth <= item.clientWidth + 1)
+    }))
+    check(`${width}px代码可独立横向滚动且整页不溢出`, await page.locator('.code-body').evaluate(element => getComputedStyle(element).overflowX === 'auto' && document.documentElement.scrollWidth <= innerWidth + 1))
+  }
+  await page.setViewportSize({ width: 390, height: 844 })
+  check('手机接入步骤名称可读且触摸高度至少48px', await page.locator('.step-tabs button').evaluateAll(items => items.every(element => Number.parseFloat(getComputedStyle(element).fontSize) >= 13 && element.getBoundingClientRect().height >= 48)))
+  await page.getByRole('button', { name: '颜色模式：浅色模式，点击切换', exact: true }).click()
+  check('手机主题单按钮可切换到深色', await page.locator('html').getAttribute('data-theme') === 'dark')
+  await page.reload()
+  await page.locator('.rail-provider').first().waitFor()
+  check('手机主题刷新后保留', await page.getByRole('button', { name: '颜色模式：深色模式，点击切换', exact: true }).isVisible())
+  await page.getByRole('button', { name: '颜色模式：深色模式，点击切换', exact: true }).click()
+  await page.getByRole('button', { name: '颜色模式：跟随系统，点击切换', exact: true }).click()
+  await page.getByRole('button', { name: '搜索页面，快捷键 Ctrl K' }).click()
+  check('手机搜索字号16px，避免iOS输入自动放大', await page.getByRole('searchbox').evaluate(element => getComputedStyle(element).fontSize === '16px'))
+  await page.setViewportSize({ width: 390, height: 420 })
+  await page.waitForFunction(() => {
+    const rect = document.querySelector('#search-dialog').getBoundingClientRect()
+    return rect.top >= 0 && rect.bottom <= innerHeight
+  })
+  check('模拟键盘占用高度时搜索关闭按钮保持可见，结果区可独立滚动', await page.locator('#search-dialog').evaluate(element => {
+    const close = element.querySelector('button[aria-label="关闭弹窗"]').getBoundingClientRect()
+    const results = element.querySelector('.search-results')
+    return close.top >= 0 && close.bottom <= innerHeight && results.clientHeight < results.scrollHeight && getComputedStyle(results).overflowY === 'auto'
+  }))
+  await page.getByRole('searchbox').fill('密钥')
+  check('手机窄高视口搜索仍能筛选入口', await page.locator('.search-results a[href="https://ai.zhouwanx.top/keys"]').count() === 1)
+  await page.getByRole('button', { name: '关闭弹窗', exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
   await page.getByRole('button', { name: '打开导航菜单' }).click()
   check('手机抽屉可用并有 dialog 语义', await page.locator('#site-sidebar').getAttribute('role') === 'dialog')
